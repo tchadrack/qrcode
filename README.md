@@ -1,4 +1,4 @@
-#QCPWD.PY 
+# QCPWD.PY 
 
 Documentação do Script de Criptografia e QR Code
 
@@ -10,6 +10,10 @@ correspondente, ou ler um QR Code existente e descriptografar o texto contido ne
 Você pode guardar informações sigilosas em um simples qrcode, impresso em papel ou algum outro suporte, seguras pela sua
  senha.
 
+ -Um script com poucas linhas de código e você só precisa do python para usar; 
+ -Código aberto, por isso você pode ter a certeza de que é realmente seguro.
+ -Forte criptografia simétrica, armazene qualquer informação no qrcode com total segurança.
+ -Mantenha e use em seu computador, ao invés de usar "soluções" online que comprometem a segurança dos seus dados.
 
 # Requisitos
 
