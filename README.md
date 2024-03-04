@@ -75,16 +75,13 @@ Retorno:
  
 # Instalação
 
-A instalação é muito simples, 
-
-
-# UTILIZACAO - LINHA DE COMANDO
+A instalação é muito simples:
 
 ## clone o repositório:
 
 git clone https://github.com/tchadrack/qrcode
 
-## Invoque o script com os parâmetros desejados:
+## Invoque o script com os parâmetros desejados, pela linha de comando:
 
 ## CRIPTOGRAFANDO: 
 
@@ -108,8 +105,7 @@ incorreta, a descriptografia falhará.
 
 Este script utiliza o algoritmo Fernet para criptografia simétrica, que é construído sobre o AES no modo CBC. O 
 PBKDF2HMAC com SHA256 é usado para derivar a chave de criptografia segura a partir da senha e do salt. A segurança do 
-script depende da força da senha escolhida e do segredo do salt gerado durante a criptografia.
-
+script depende da __força da senha__ escolhida e do segredo do salt gerado durante a criptografia.
 
 
 ### DOAÇÃO (DONATION): bc1q67uz4y2qfjyh2dd3dpus0emwplcshyg5n9nyys    (btc)
