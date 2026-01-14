@@ -65,6 +65,14 @@ python qcpwd.py -d -n nome_do_arquivo.png -p senha
 
 O script le o QR Code e tenta descriptografar o texto. A senha precisa ser a mesma usada na criptografia.
 
+### Ler texto de arquivo
+
+```bash
+python qcpwd.py -e -n nome_do_arquivo.png -p senha -i texto.txt
+```
+
+O arquivo de entrada deve estar em UTF-8 (com ou sem BOM).
+
 ### Fluxo completo (exemplo)
 
 ```bash
@@ -77,6 +85,12 @@ Saida esperada no modo de descriptografia:
 ```
 Texto descriptografado: segredo de teste
 ```
+
+## Opcoes avancadas
+
+- `--kdf-iter`: numero de iteracoes do PBKDF2 (padrao: 100000).
+- `--salt-len`: tamanho do salt em bytes (padrao: 16). Use o mesmo valor ao descriptografar.
+- `--qr-index`: indice do QR quando ha mais de um na imagem (padrao: 0).
 
 ## Estrutura do QR Code
 
@@ -96,6 +110,11 @@ Esse formato e gerado automaticamente pelo script e e esperado na leitura.
 - A leitura do QR Code depende do `pyzbar` e da biblioteca nativa do ZBar no sistema.
 - A criptografia usa Fernet (AES + HMAC) e a chave e derivada com PBKDF2-HMAC (SHA-256).
 
+## Codigos de saida
+
+- `0`: sucesso
+- `1`: erro na leitura/decodificacao/descriptografia
+
 ## Testes
 
 Testes simples de roundtrip (criptografia -> QR -> descriptografia) em `tests/`:
@@ -108,6 +127,8 @@ python -m unittest discover -s tests
 
 - Erro ao importar `pyzbar`: instale o ZBar no sistema (no Windows, use um pacote que inclua as DLLs do ZBar).
 - `Nenhum QR code encontrado no arquivo informado.`: o arquivo nao e um QR valido ou esta ilegivel.
+- `Indice de QR code fora do intervalo disponivel.`: use `--qr-index` com um valor valido.
+- `Dados criptografados incompletos.`: QR truncado/corrompido ou `--salt-len` incorreto.
 - `Nao foi possivel descriptografar`: senha incorreta ou QR corrompido.
 
 ## Doacao (BTC)

@@ -1,6 +1,7 @@
 import argparse
 import base64
 import os
+import sys
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -10,30 +11,51 @@ import pyzbar.pyzbar as pyzbar
 import qrcode
 
 
-def gerar_chave(senha, salt=None):
+def gerar_chave(senha, salt=None, iterations=100000, salt_len=16):
     if salt is None:
-        salt = os.urandom(16)  # Gera um novo salt se nenhum for fornecido
+        salt = os.urandom(salt_len)
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=100000,
+        iterations=iterations,
     )
-    chave = base64.urlsafe_b64encode(kdf.derive(senha.encode()))
+    chave = base64.urlsafe_b64encode(kdf.derive(senha.encode("utf-8")))
     return chave, salt
 
 
-def criptografar_texto(texto, senha):
-    chave, salt = gerar_chave(senha)
+def criptografar_texto(texto, senha, iterations=100000, salt_len=16):
+    chave, salt = gerar_chave(senha, None, iterations, salt_len)
     fernet = Fernet(chave)
-    texto_criptografado = fernet.encrypt(texto.encode())
+    texto_criptografado = fernet.encrypt(texto.encode("utf-8"))
     return texto_criptografado, salt
 
 
-def descriptografar_texto(texto_criptografado, senha, salt):
-    chave, _ = gerar_chave(senha, salt)
+def descriptografar_texto(texto_criptografado, senha, salt, iterations=100000):
+    chave, _ = gerar_chave(senha, salt, iterations)
     fernet = Fernet(chave)
-    return fernet.decrypt(texto_criptografado).decode()
+    return fernet.decrypt(texto_criptografado).decode("utf-8")
+
+
+def montar_payload(salt, texto_criptografado):
+    return base64.urlsafe_b64encode(salt + texto_criptografado).decode("ascii")
+
+
+def extrair_salt_e_ciphertext(dados_codificados, salt_len):
+    try:
+        dados_decodificados = base64.urlsafe_b64decode(dados_codificados)
+    except Exception as exc:
+        raise ValueError("Dados Base64 invalidos.") from exc
+
+    if salt_len <= 0:
+        raise ValueError("Salt length deve ser maior que zero.")
+
+    if len(dados_decodificados) <= salt_len:
+        raise ValueError("Dados criptografados incompletos.")
+
+    salt = dados_decodificados[:salt_len]
+    texto_criptografado = dados_decodificados[salt_len:]
+    return salt, texto_criptografado
 
 
 def gerar_qr_code(dados, nome_arquivo):
@@ -41,15 +63,46 @@ def gerar_qr_code(dados, nome_arquivo):
     img.save(nome_arquivo)
 
 
-def ler_qr_code(nome_arquivo):
+def ler_qr_code(nome_arquivo, qr_index=0):
     img = Image.open(nome_arquivo)
     dados = pyzbar.decode(img)
     if not dados:
         raise ValueError("Nenhum QR code encontrado no arquivo informado.")
-    return dados[0].data
+    if qr_index < 0 or qr_index >= len(dados):
+        raise ValueError("Indice de QR code fora do intervalo disponivel.")
+    return dados[qr_index].data
+
+
+def ler_texto_entrada(caminho_arquivo=None):
+    if caminho_arquivo:
+        with open(caminho_arquivo, "r", encoding="utf-8-sig") as arquivo:
+            return arquivo.read()
+    if sys.stdin.isatty():
+        return input("Digite ou cole o texto a ser criptografado: ")
+    texto = sys.stdin.read()
+    if texto.startswith("\ufeff"):
+        texto = texto.lstrip("\ufeff")
+    return texto
+
+
+def configurar_io():
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+def validar_parametros(args):
+    if args.kdf_iter <= 0:
+        raise ValueError("kdf-iter deve ser maior que zero.")
+    if args.salt_len <= 0:
+        raise ValueError("salt-len deve ser maior que zero.")
 
 
 def main():
+    configurar_io()
     parser = argparse.ArgumentParser(
         description="Criptografa texto e gera QR Code ou le e descriptografa QR Code."
     )
@@ -64,26 +117,63 @@ def main():
         help="Senha para criptografia/descriptografia.",
         required=True,
     )
+    parser.add_argument(
+        "-i",
+        "--input",
+        type=str,
+        help="Caminho de arquivo para ler o texto de entrada (UTF-8).",
+    )
+    parser.add_argument(
+        "--kdf-iter",
+        type=int,
+        default=100000,
+        help="Numero de iteracoes do PBKDF2 (padrao: 100000).",
+    )
+    parser.add_argument(
+        "--salt-len",
+        type=int,
+        default=16,
+        help="Tamanho do salt em bytes (padrao: 16).",
+    )
+    parser.add_argument(
+        "--qr-index",
+        type=int,
+        default=0,
+        help="Indice do QR quando ha mais de um na imagem (padrao: 0).",
+    )
 
     args = parser.parse_args()
 
-    if args.encrypt:
-        texto = input("Digite ou cole o texto a ser criptografado: ")
-        texto_criptografado, salt = criptografar_texto(texto, args.senha)
-        # Combina o salt e o texto criptografado para armazenamento
-        dados_para_qr = base64.urlsafe_b64encode(salt + texto_criptografado).decode()
-        gerar_qr_code(dados_para_qr, args.nome)
-        print(f"QR Code gerado e criptografado salvo como {args.nome}")
-    elif args.decrypt:
-        try:
-            dados_codificados = ler_qr_code(args.nome)
-            dados_decodificados = base64.urlsafe_b64decode(dados_codificados)
-            # Extrai o salt e o texto criptografado
-            salt, texto_criptografado = dados_decodificados[:16], dados_decodificados[16:]
-            texto_descriptografado = descriptografar_texto(texto_criptografado, args.senha, salt)
+    try:
+        validar_parametros(args)
+
+        if args.encrypt:
+            texto = ler_texto_entrada(args.input)
+            texto_criptografado, salt = criptografar_texto(
+                texto,
+                args.senha,
+                iterations=args.kdf_iter,
+                salt_len=args.salt_len,
+            )
+            dados_para_qr = montar_payload(salt, texto_criptografado)
+            gerar_qr_code(dados_para_qr, args.nome)
+            print(f"QR Code gerado e criptografado salvo como {args.nome}")
+        elif args.decrypt:
+            dados_codificados = ler_qr_code(args.nome, args.qr_index)
+            salt, texto_criptografado = extrair_salt_e_ciphertext(
+                dados_codificados,
+                args.salt_len,
+            )
+            texto_descriptografado = descriptografar_texto(
+                texto_criptografado,
+                args.senha,
+                iterations=args.kdf_iter,
+                salt=salt,
+            )
             print("Texto descriptografado:", texto_descriptografado)
-        except Exception as e:
-            print("Nao foi possivel descriptografar:", e)
+    except Exception as e:
+        print("Nao foi possivel descriptografar:", e, file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
