@@ -1,13 +1,14 @@
 import argparse
-from cryptography.fernet import Fernet
-import qrcode
-from PIL import Image
-import pyzbar.pyzbar as pyzbar
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
 import base64
 import os
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from PIL import Image
+import pyzbar.pyzbar as pyzbar
+import qrcode
+
 
 def gerar_chave(senha, salt=None):
     if salt is None:
@@ -17,10 +18,10 @@ def gerar_chave(senha, salt=None):
         length=32,
         salt=salt,
         iterations=100000,
-        backend=default_backend()
     )
     chave = base64.urlsafe_b64encode(kdf.derive(senha.encode()))
     return chave, salt
+
 
 def criptografar_texto(texto, senha):
     chave, salt = gerar_chave(senha)
@@ -28,27 +29,41 @@ def criptografar_texto(texto, senha):
     texto_criptografado = fernet.encrypt(texto.encode())
     return texto_criptografado, salt
 
+
 def descriptografar_texto(texto_criptografado, senha, salt):
     chave, _ = gerar_chave(senha, salt)
     fernet = Fernet(chave)
     return fernet.decrypt(texto_criptografado).decode()
 
+
 def gerar_qr_code(dados, nome_arquivo):
     img = qrcode.make(dados)
     img.save(nome_arquivo)
 
+
 def ler_qr_code(nome_arquivo):
     img = Image.open(nome_arquivo)
     dados = pyzbar.decode(img)
+    if not dados:
+        raise ValueError("Nenhum QR code encontrado no arquivo informado.")
     return dados[0].data
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Criptografa texto e gera QR Code ou lê e descriptografa QR Code.')
+    parser = argparse.ArgumentParser(
+        description="Criptografa texto e gera QR Code ou le e descriptografa QR Code."
+    )
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-e', '--encrypt', action='store_true', help='Modo de criptografia.')
-    group.add_argument('-d', '--decrypt', action='store_true', help='Modo de descriptografia.')
-    parser.add_argument('-n', '--nome', type=str, help='Nome do arquivo do QR Code.', required=True)
-    parser.add_argument('-p', '--senha', type=str, help='Senha para criptografia/descriptografia.', required=True)
+    group.add_argument("-e", "--encrypt", action="store_true", help="Modo de criptografia.")
+    group.add_argument("-d", "--decrypt", action="store_true", help="Modo de descriptografia.")
+    parser.add_argument("-n", "--nome", type=str, help="Nome do arquivo do QR Code.", required=True)
+    parser.add_argument(
+        "-p",
+        "--senha",
+        type=str,
+        help="Senha para criptografia/descriptografia.",
+        required=True,
+    )
 
     args = parser.parse_args()
 
@@ -68,8 +83,8 @@ def main():
             texto_descriptografado = descriptografar_texto(texto_criptografado, args.senha, salt)
             print("Texto descriptografado:", texto_descriptografado)
         except Exception as e:
-            print("Não foi possível descriptografar:", e)
+            print("Nao foi possivel descriptografar:", e)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
-

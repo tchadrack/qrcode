@@ -1,115 +1,115 @@
-# QCPWD.PY 
+# QCPWD.PY
 
-Documentação do Script de Criptografia e QR Code
+Script de linha de comando para criptografar um texto com senha, gerar um QR Code com os dados criptografados e,
+posteriormente, ler o QR Code e descriptografar o conteudo com a senha correta.
 
-# Visão Geral
+Voce pode guardar informacoes sigilosas em um QR Code, impresso em papel ou outro suporte, protegidas pela sua senha.
 
-Este script fornece uma interface de linha de comando para criptografar um texto fornecido pelo usuário e gerar um QR Code 
-correspondente, ou ler um QR Code existente e descriptografar o texto contido nele, se a senha correta for fornecida.
+## Destaques
 
-Você pode guardar informações sigilosas em um simples qrcode, impresso em papel ou algum outro suporte, seguras pela sua
- senha.
+- Script simples que roda localmente com Python.
+- Codigo aberto para auditoria.
+- Criptografia simetrica com senha; evite solucoes online para dados sensiveis.
 
- -Um script com poucas linhas de código e você só precisa do python para usar; 
- -Código aberto, por isso você pode ter a certeza de que é realmente seguro.
- -Forte criptografia simétrica, armazene qualquer informação no qrcode com total segurança.
- -Mantenha e use em seu computador, ao invés de usar "soluções" online que comprometem a segurança dos seus dados.
+## Como funciona
 
-# Requisitos
+1) A senha informada e usada para derivar uma chave com PBKDF2-HMAC (SHA-256) e um salt aleatorio.
+2) O texto e criptografado com Fernet usando a chave derivada.
+3) O salt e concatenado ao ciphertext e o resultado e codificado em Base64 para caber no QR Code.
+4) Na leitura, o QR e decodificado, o salt e separado do ciphertext, e o texto e descriptografado com a mesma senha.
+
+## Requisitos
 
 - Python 3
 - Bibliotecas: cryptography, qrcode, Pillow, pyzbar
 
-Você precisará instalar o python, e as bibliotecas acima em seu sistema; 
+Instale o Python e as dependencias acima no seu sistema.
 
-### Funções
+## Funcionalidades
 
-gerar_chave(senha, salt=None)
-Gera uma chave segura para criptografia com base em uma senha fornecida.
+- `gerar_chave(senha, salt=None)`: deriva uma chave segura a partir da senha usando PBKDF2HMAC e um salt.
+- `criptografar_texto(texto, senha)`: criptografa texto com Fernet e retorna o ciphertext e o salt.
+- `descriptografar_texto(texto_criptografado, senha, salt)`: descriptografa o ciphertext usando a senha e o salt.
+- `gerar_qr_code(dados, nome_arquivo)`: gera e salva um QR Code com os dados.
+- `ler_qr_code(nome_arquivo)`: le um QR Code e retorna os dados contidos.
 
-Parâmetros:
+## Instalacao
 
-senha: A senha a partir da qual a chave de criptografia será derivada.
-salt: O salt a ser usado na derivação da chave. Se não for fornecido, um novo será gerado aleatoriamente.
-Retorno:
+Clone o repositorio:
 
-Retorna uma tupla contendo a chave derivada e o salt utilizado.
-criptografar_texto(texto, senha)
-Criptografa um texto fornecido usando a senha fornecida.
-
-Parâmetros:
-
-texto: O texto claro a ser criptografado.
-senha: A senha usada para gerar a chave de criptografia.
-Retorno:
-
-Retorna uma tupla contendo o texto criptografado e o salt usado na criptografia.
-descriptografar_texto(texto_criptografado, senha, salt)
-Descriptografa um texto criptografado fornecido usando a senha e o salt fornecidos.
-
-Parâmetros:
-
-texto_criptografado: O texto criptografado a ser descriptografado.
-senha: A senha usada para descriptografar o texto.
-salt: O salt usado para gerar a chave de criptografia.
-Retorno:
-
-Retorna o texto descriptografado.
-gerar_qr_code(dados, nome_arquivo)
-Gera um QR Code contendo os dados fornecidos e salva o QR Code como uma imagem.
-
-Parâmetros:
-
-dados: Os dados a serem incorporados no QR Code.
-nome_arquivo: O nome do arquivo de imagem onde o QR Code será salvo.
-ler_qr_code(nome_arquivo)
-Lê um QR Code de um arquivo de imagem fornecido e extrai os dados contidos.
-
-Parâmetros:
-
-nome_arquivo: O nome do arquivo de imagem contendo o QR Code.
-Retorno:
-
-
-
- 
-# Instalação
-
-A instalação é muito simples:
-
-## clone o repositório:
-
+```bash
 git clone https://github.com/tchadrack/qrcode
+```
 
-## Invoque o script com os parâmetros desejados, pela linha de comando:
+Instale as dependencias:
 
-## CRIPTOGRAFANDO: 
+```bash
+pip install cryptography qrcode Pillow pyzbar
+```
 
-#### python qcpwd.py -e -n nome_do_arquivo.png -p senha
+## Utilizacao (linha de comando)
 
-Onde nome_do_arquivo.png é o nome do arquivo de imagem que será criado, e senha é a senha usada para criptografar o 
-texto.
+### Criptografando
 
+```bash
+python qcpwd.py -e -n nome_do_arquivo.png -p senha
+```
 
-## DESCRIPTOGRAFANDO: 
+O script pede o texto via `stdin`, criptografa e grava o QR Code no arquivo informado.
 
-#### python qcpwd.py -d -n nome_do_arquivo.png -p senha
+### Descriptografando
 
-Onde nome_do_arquivo.png é o nome do arquivo de imagem que contém o QR Code criptografado, e senha é a senha que, se 
-correta, descriptografará o texto contido no QR Code.
+```bash
+python qcpwd.py -d -n nome_do_arquivo.png -p senha
+```
 
-Nota: A senha usada para descriptografar deve ser a mesma usada para criptografar o texto originalmente. Se a senha estiver 
-incorreta, a descriptografia falhará.
+O script le o QR Code e tenta descriptografar o texto. A senha precisa ser a mesma usada na criptografia.
 
-# Segurança
+### Fluxo completo (exemplo)
 
-Este script utiliza o algoritmo Fernet para criptografia simétrica, que é construído sobre o AES no modo CBC. O 
-PBKDF2HMAC com SHA256 é usado para derivar a chave de criptografia segura a partir da senha e do salt. A segurança do 
-script depende da __força da senha__ escolhida e do segredo do salt gerado durante a criptografia.
+```bash
+echo "segredo de teste" | python qcpwd.py -e -n segredo.png -p senha-forte-123
+python qcpwd.py -d -n segredo.png -p senha-forte-123
+```
 
+Saida esperada no modo de descriptografia:
 
-### DOAÇÃO (DONATION): bc1q67uz4y2qfjyh2dd3dpus0emwplcshyg5n9nyys    (btc)
+```
+Texto descriptografado: segredo de teste
+```
 
+## Estrutura do QR Code
 
+O QR Code armazena uma string Base64 que contem:
 
+```
+[16 bytes de salt][ciphertext do Fernet]
+```
 
+Esse formato e gerado automaticamente pelo script e e esperado na leitura.
+
+## Seguranca e limitacoes
+
+- A seguranca depende da forca da senha. Use senhas longas e unicas.
+- O salt e armazenado junto do ciphertext no QR Code. Isso e esperado e nao compromete a seguranca.
+- Se o QR Code for danificado ou ilegivel, a descriptografia falha.
+- A leitura do QR Code depende do `pyzbar` e da biblioteca nativa do ZBar no sistema.
+- A criptografia usa Fernet (AES + HMAC) e a chave e derivada com PBKDF2-HMAC (SHA-256).
+
+## Testes
+
+Testes simples de roundtrip (criptografia -> QR -> descriptografia) em `tests/`:
+
+```bash
+python -m unittest discover -s tests
+```
+
+## Troubleshooting
+
+- Erro ao importar `pyzbar`: instale o ZBar no sistema (no Windows, use um pacote que inclua as DLLs do ZBar).
+- `Nenhum QR code encontrado no arquivo informado.`: o arquivo nao e um QR valido ou esta ilegivel.
+- `Nao foi possivel descriptografar`: senha incorreta ou QR corrompido.
+
+## Doacao (BTC)
+
+`bc1q67uz4y2qfjyh2dd3dpus0emwplcshyg5n9nyys`
