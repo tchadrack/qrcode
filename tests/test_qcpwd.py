@@ -21,7 +21,12 @@ class QCPWDRoundtripTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             nome_arquivo = os.path.join(tmpdir, "teste.png")
             texto_criptografado, salt = qcpwd.criptografar_texto(texto, senha)
-            dados_para_qr = qcpwd.montar_payload(salt, texto_criptografado)
+            dados_para_qr = qcpwd.montar_payload(
+                salt,
+                texto_criptografado,
+                iterations=100000,
+                salt_len=16,
+            )
             qcpwd.gerar_qr_code(dados_para_qr, nome_arquivo)
 
             try:
@@ -29,11 +34,11 @@ class QCPWDRoundtripTests(unittest.TestCase):
             except Exception as exc:
                 raise unittest.SkipTest(f"pyzbar/zbar not available: {exc}")
 
-            salt_lido, texto_criptografado_lido = qcpwd.extrair_salt_e_ciphertext(
-                dados_codificados, 16
+            salt_lido, texto_criptografado_lido, iterations, salt_len = (
+                qcpwd.extrair_salt_e_ciphertext(dados_codificados)
             )
             texto_descriptografado = qcpwd.descriptografar_texto(
-                texto_criptografado_lido, senha, salt_lido
+                texto_criptografado_lido, senha, salt_lido, iterations=iterations
             )
             self.assertEqual(texto, texto_descriptografado)
 
@@ -86,7 +91,12 @@ class QCPWDRoundtripTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             nome_arquivo = os.path.join(tmpdir, "teste.png")
             texto_criptografado, salt = qcpwd.criptografar_texto(texto, senha)
-            dados_para_qr = qcpwd.montar_payload(salt, texto_criptografado)
+            dados_para_qr = qcpwd.montar_payload(
+                salt,
+                texto_criptografado,
+                iterations=100000,
+                salt_len=16,
+            )
             qcpwd.gerar_qr_code(dados_para_qr, nome_arquivo)
 
             try:
@@ -104,9 +114,9 @@ class QCPWDRoundtripTests(unittest.TestCase):
     def test_payload_truncado(self):
         import qcpwd
 
-        dados = base64.urlsafe_b64encode(b"curto")
+        dados = base64.urlsafe_b64encode(b"QCPW" + bytes([1]) + b"\x00\x00\x00\x10")
         with self.assertRaises(ValueError):
-            qcpwd.extrair_salt_e_ciphertext(dados, 16)
+            qcpwd.extrair_salt_e_ciphertext(dados)
 
     def test_ler_texto_entrada_com_bom(self):
         import qcpwd
